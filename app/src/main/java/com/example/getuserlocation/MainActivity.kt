@@ -27,7 +27,6 @@ class MainActivity : AppCompatActivity() {
                 if(result!=null){
                     val latitude = result.latitude
                     val longitude = result.longitude
-                    sendCoordinatesToServer(latitude, longitude)
                     tvLocation.text= "Latitud ${result.latitude} y longitud ${result.longitude}"
                     // Luego, envía las coordenadas al servidor Flask
                     sendCoordinatesToServer(result.latitude, result.longitude)
@@ -37,7 +36,7 @@ class MainActivity : AppCompatActivity() {
     }
     private fun sendCoordinatesToServer(latitude: Double, longitude: Double) {
         val client = OkHttpClient()
-        val url = "http://192.168.1.3:5000/agregar_punto"  // Reemplaza con la URL de tu API
+        val url = "http://192.168.0.21:5000/agregar_punto"  // Reemplaza con la URL de tu API
 
         val json = """
         {
