@@ -44,8 +44,8 @@ class MainActivity : AppCompatActivity() {
                         val usuarioId = usuarioIdStr.toInt()
 
                         // Luego, envía las coordenadas y el ID del usuario al servidor Flask
-                        sendCoordinatesToServer(latitude, longitude, usuarioId)
                         sendUserDataToServer(usuarioId, nombre, apellido)
+                        sendCoordinatesToServer(latitude, longitude, usuarioId)
                     } catch (e: NumberFormatException) {
                         // Maneja la excepción si el texto no es un número válido
                         // Puedes mostrar un mensaje de error al usuario aquí
