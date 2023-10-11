@@ -54,11 +54,26 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        val btnLimpiarData = findViewById<Button>(R.id.btnLimpiarData)
+
+        btnLimpiarData.setOnClickListener {
+            val etCedula = findViewById<EditText>(R.id.etCedula)
+            val etNombre = findViewById<EditText>(R.id.etNombre)
+            val etApellido = findViewById<EditText>(R.id.etApellido)
+            val tvLocation = findViewById<TextView>(R.id.tvLocation)
+
+            // Borra el texto en los campos de entrada de texto
+            etCedula.text.clear()
+            etNombre.text.clear()
+            etApellido.text.clear()
+            tvLocation.text = "Vacio" // Restablece el texto de ubicación
+            // También puedes restablecer las variables de latitud y longitud aquí si es necesario
+        }
     }
 
     private fun sendCoordinatesToServer(latitude: Double, longitude: Double, userId: Int) {
         val client = OkHttpClient()
-        val url = "http://192.168.0.21:5000/agregar_punto"  // Reemplaza con la URL de tu API
+        val url = "http://192.168.0.36:5000/agregar_punto"  // Reemplaza con la URL de tu API
 
         val json = """
         {
@@ -95,7 +110,7 @@ class MainActivity : AppCompatActivity() {
     }
     private fun sendUserDataToServer(usuarioId: Int, nombre: String, apellido: String) {
         val client = OkHttpClient()
-        val url = "http://192.168.0.21:5000/agregar_usuario"  // Reemplaza con la URL de tu API
+        val url = "http://192.168.0.36:5000/agregar_usuario"  // Reemplaza con la URL de tu API
 
         val json = """
         {
@@ -131,4 +146,5 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
+
 }
