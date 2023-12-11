@@ -1,5 +1,6 @@
 package com.example.getuserlocation
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
@@ -12,111 +13,100 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import android.widget.EditText
+import android.widget.Toast
+import kotlinx.coroutines.delay
+
 
 class MainActivity : AppCompatActivity() {
     private val locationService: LocationService = LocationService()
+    private var autoFetchActive = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val tvLocation = findViewById<TextView>(R.id.tvLocation)
         val btnLocation = findViewById<Button>(R.id.btnLocation)
+        val btnStop = findViewById<Button>(R.id.btnStop)
+
 
         btnLocation.setOnClickListener {
             lifecycleScope.launch {
                 val result = locationService.getUserLocation(this@MainActivity)
+                //Toast.makeText(this@MainActivity, "Obtención automática Iniciada", Toast.LENGTH_SHORT).show()
                 if (result != null) {
+                    val usuarioId = intent.getStringExtra("USERNAME_EXTRA")
+                    val userId = usuarioId.toString()
                     val latitude = result.latitude
                     val longitude = result.longitude
                     tvLocation.text = "Latitud ${result.latitude} y longitud ${result.longitude}"
-
-                    // Obtener el ID del usuario ingresado por el usuario
-                    val etCedula = findViewById<EditText>(R.id.etCedula)
-                    val usuarioIdStr = etCedula.text.toString()
-                    // Obtener el nombre y apellido ingresados por el usuario
-                    val etNombre = findViewById<EditText>(R.id.etNombre)
-                    val etApellido = findViewById<EditText>(R.id.etApellido)
-                    val nombre = etNombre.text.toString()
-                    val apellido = etApellido.text.toString()
-
-                    // Intenta convertir el ID del usuario a un entero
-                    try {
-                        val usuarioId = usuarioIdStr.toInt()
-
-                        // Luego, envía las coordenadas y el ID del usuario al servidor Flask
-                        sendUserDataToServer(usuarioId, nombre, apellido)
-                        sendCoordinatesToServer(latitude, longitude, usuarioId)
-                    } catch (e: NumberFormatException) {
-                        // Maneja la excepción si el texto no es un número válido
-                        // Puedes mostrar un mensaje de error al usuario aquí
-                        println("Error: el ID del usuario no es un número válido")
-                    }
+                    val token = intent.getStringExtra("TOKEN_EXTRA")
+                    val strtoken =token.toString()
+                    sendCoordinatesToServer(latitude, longitude, userId,strtoken)
+                    btnLocation.isEnabled = false
+                    autoFetchActive = true
+                    println(strtoken)
+                    println(userId)
                 }
             }
         }
+
+        val btnSalir=findViewById<Button>(R.id.btnSalir)
+        btnSalir.setOnClickListener {
+            // Crear un Intent para la nueva actividad
+            val intent = Intent(this, Login::class.java)
+
+            startActivity(intent)
+
+            finish()
+        }
+
         val btnLimpiarData = findViewById<Button>(R.id.btnLimpiarData)
 
         btnLimpiarData.setOnClickListener {
-            val etCedula = findViewById<EditText>(R.id.etCedula)
-            val etNombre = findViewById<EditText>(R.id.etNombre)
-            val etApellido = findViewById<EditText>(R.id.etApellido)
             val tvLocation = findViewById<TextView>(R.id.tvLocation)
 
-            // Borra el texto en los campos de entrada de texto
-            etCedula.text.clear()
-            etNombre.text.clear()
-            etApellido.text.clear()
             tvLocation.text = "Vacio" // Restablece el texto de ubicación
-            // También puedes restablecer las variables de latitud y longitud aquí si es necesario
+        }
+
+        btnStop.setOnClickListener {
+            autoFetchActive = false
+            btnLocation.isEnabled = true
+            Toast.makeText(this, "Obtención automática detenida", Toast.LENGTH_SHORT).show()
+        }
+        lifecycleScope.launch {
+            while (true) {
+                if (autoFetchActive) {
+                    val result = locationService.getUserLocation(this@MainActivity)
+
+                    if (result != null) {
+                        val usuarioId = intent.getStringExtra("USERNAME_EXTRA")
+                        val userId = usuarioId.toString()
+                        val latitude = result.latitude
+                        val longitude = result.longitude
+                        tvLocation.text = "Latitud ${result.latitude} y longitud ${result.longitude}"
+                        val token = intent.getStringExtra("TOKEN_EXTRA")
+                        val strtoken =token.toString()
+                        sendCoordinatesToServer(latitude, longitude, userId,strtoken)
+                    }
+                }
+
+                // Espera un intervalo de tiempo (por ejemplo, 5 segundos) antes de la próxima obtención
+                delay(1800000)
+            }
         }
     }
 
-    private fun sendCoordinatesToServer(latitude: Double, longitude: Double, userId: Int) {
+    private fun sendCoordinatesToServer(latitude: Double, longitude: Double, userId: String, token: String) {
+        println("Hola luego 30sg")
         val client = OkHttpClient()
-        val url = "http://192.168.0.36:5000/agregar_punto"  // Reemplaza con la URL de tu API
-
+        val url = "https://apirest-qywgms5y2q-ue.a.run.app/agregar_punto"  // Reemplaza con la URL de tu API
+        //val url = "http://127.0.0.1:5000/agregar_punto"
         val json = """
         {
             "latitud": "$latitude",
             "longitud": "$longitude",
-            "usuario_id": $userId
-        }
-    """.trimIndent()
-
-        val requestBody = json.toRequestBody("application/json".toMediaType())
-
-        val request = Request.Builder()
-            .url(url)
-            .post(requestBody)
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    if (!response.isSuccessful) {
-                        // Manejar un error si la respuesta no es exitosa
-                        println("Error al enviar coordenadas al servidor")
-                    } else {
-                        // Procesar una respuesta exitosa si es necesario
-                        println("Coordenadas enviadas correctamente al servidor")
-                    }
-                }
-            }
-        })
-    }
-    private fun sendUserDataToServer(usuarioId: Int, nombre: String, apellido: String) {
-        val client = OkHttpClient()
-        val url = "http://192.168.0.36:5000/agregar_usuario"  // Reemplaza con la URL de tu API
-
-        val json = """
-        {
-            "id": $usuarioId,
-            "nombre": "$nombre",
-            "apellido": "$apellido"
+            "usuario_id": "$userId"
             
         }
     """.trimIndent()
@@ -126,6 +116,7 @@ class MainActivity : AppCompatActivity() {
         val request = Request.Builder()
             .url(url)
             .post(requestBody)
+            .header("Authorization", "Bearer $token")
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -137,14 +128,20 @@ class MainActivity : AppCompatActivity() {
                 response.use {
                     if (!response.isSuccessful) {
                         // Manejar un error si la respuesta no es exitosa
-                        println("Error al enviar coordenadas al servidor")
+                        println("Error al enviar PUNTOS al servidor")
                     } else {
                         // Procesar una respuesta exitosa si es necesario
-                        println("Coordenadas enviadas correctamente al servidor")
+                        println("PUNTOS enviados correctamente al servidor")
                     }
                 }
             }
         })
+        Toast.makeText(this@MainActivity, "Ubicacion actualizada", Toast.LENGTH_SHORT).show()
+
     }
 
+    override fun onBackPressed() {
+        finishAffinity()
+
+    }
 }
